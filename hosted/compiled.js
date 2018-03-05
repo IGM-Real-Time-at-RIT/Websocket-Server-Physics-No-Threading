@@ -61,6 +61,19 @@ var redraw = function redraw(time) {
     ctx.strokeRect(square.x, square.y, spriteSizes.WIDTH, spriteSizes.HEIGHT);
   }
 
+  for (var _i = 0; _i < attacks.length; _i++) {
+    var attack = attacks[_i];
+
+    ctx.drawImage(slashImage, attack.x, attack.y, attack.width, attack.height);
+
+    attack.frames++;
+
+    if (attack.frames > 30) {
+      attacks.splice(_i);
+      _i--;
+    }
+  }
+
   animationFrame = requestAnimationFrame(redraw);
 };
 'use strict';
@@ -134,6 +147,8 @@ var init = function init() {
 
   socket.on('joined', setUser);
   socket.on('updatedMovement', update);
+  socket.on('attackHit', playerDeath);
+  socket.on('attackUpdate', receiveAttack);
   socket.on('left', removeUser);
 
   document.body.addEventListener('keydown', keyDownHandler);
@@ -182,11 +197,36 @@ var setUser = function setUser(data) {
   requestAnimationFrame(redraw);
 };
 
-var receiveAttack = function receiveAttack(data) {};
+var receiveAttack = function receiveAttack(data) {
+  attacks.push(data);
+};
 
-var sendAttack = function sendAttack() {};
+var sendAttack = function sendAttack() {
+  var square = squares[hash];
 
-var playerDeath = function playerDeath(data) {};
+  var attack = {
+    hash: hash,
+    x: square.x,
+    y: square.y,
+    direction: square.direction,
+    frames: 0
+  };
+
+  socket.emit('attack', attack);
+};
+
+var playerDeath = function playerDeath(data) {
+  delete squares[data];
+
+  if (data === hash) {
+    socket.disconnect();
+    cancelAnimationFrame(animationFrame);
+    ctx.fillRect(0, 0, 500, 500);
+    ctx.fillStyle = 'white';
+    ctx.font = '48px serif';
+    ctx.fillText('You died', 50, 100);
+  }
+};
 
 var updatePosition = function updatePosition() {
   var square = squares[hash];
